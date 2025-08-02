@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>串カツ田中 注文管理アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -85,7 +85,7 @@
     </div>
 
 
-  <script>
+    <script>
         // --- DATA & STATE MANAGEMENT ---
 
         const state = {
@@ -93,7 +93,7 @@
             registeredNames: [],
             currentOrders: [],
             orderHistory: [],
-            selectedPerson: null, // ADDED: To keep track of the selected person
+            selectedPerson: null,
         };
 
         const menu = {
@@ -153,7 +153,7 @@
             localStorage.setItem('kushikatsuApp', JSON.stringify({
                 registeredNames: state.registeredNames,
                 orderHistory: state.orderHistory,
-                selectedPerson: state.selectedPerson // ADDED: Save selected person
+                selectedPerson: state.selectedPerson
             }));
         }
 
@@ -162,7 +162,6 @@
             if (data) {
                 state.registeredNames = data.registeredNames || [];
                 state.orderHistory = data.orderHistory || [];
-                // ADDED: Load selected person, default to first name if it exists
                 state.selectedPerson = data.selectedPerson || (state.registeredNames.length > 0 ? state.registeredNames[0] : null);
             }
         }
@@ -172,7 +171,6 @@
         const mainContent = document.getElementById('main-content');
 
         function render() {
-            // Update tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (btn.getAttribute('onclick').includes(`'${state.currentTab}'`)) {
@@ -180,8 +178,6 @@
                 }
             });
 
-            // Render content for the current tab
-            mainContent.innerHTML = ''; // Clear previous content
             let content = '';
             switch (state.currentTab) {
                 case 'names':
@@ -223,12 +219,39 @@
             `;
         }
 
+        function renderCurrentOrderList() {
+            const listEl = document.getElementById('current-order-list');
+            const totalEl = document.getElementById('current-order-total');
+            const confirmBtn = document.getElementById('confirm-order-btn');
+
+            if (!listEl || !totalEl || !confirmBtn) return;
+
+            const currentOrderItems = state.currentOrders.map(order => `
+                <div class="flex justify-between items-center p-2 border-b fade-in">
+                    <div>
+                        <p class="text-sm sm:text-base">${order.person} - ${order.item}</p>
+                        <p class="text-xs sm:text-sm text-gray-500">${order.count}本 x ¥${order.price} = ¥${order.totalPrice.toLocaleString()}</p>
+                    </div>
+                    <button class="delete-current-order-btn text-red-500 hover:text-red-700 font-bold text-2xl" data-id="${order.id}">×</button>
+                </div>
+            `).join('');
+
+            listEl.innerHTML = state.currentOrders.length > 0 ? currentOrderItems : '<p class="text-gray-500 text-center pt-4">注文を追加してください。</p>';
+
+            listEl.querySelectorAll('.delete-current-order-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => handleDeleteCurrentOrder(e.currentTarget.dataset.id));
+            });
+
+            const currentTotal = state.currentOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+            totalEl.textContent = `¥${currentTotal.toLocaleString()}`;
+            confirmBtn.disabled = state.currentOrders.length === 0;
+        }
+
         function renderOrderTab() {
             if (state.registeredNames.length === 0) {
                 return `<p class="text-center text-gray-600">先に「参加者登録」タブで名前を登録してください。</p>`;
             }
 
-            // MODIFIED: Use state.selectedPerson to keep selection
             const nameOptions = state.registeredNames.map(name => 
                 `<option value="${name}" ${name === state.selectedPerson ? 'selected' : ''}>${name}</option>`
             ).join('');
@@ -245,7 +268,7 @@
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <input type="number" class="add-quantity-input w-14 sm:w-16 text-center border rounded-md p-1" placeholder="1" min="1" max="20" data-item-name="${item.name}">
-                                    <button class="add-item-btn bg-red-500 text-white px-2 sm:px-3 py-1 rounded-md hover:bg-red-600 transition text-sm">追加</button>
+                                    <button class="add-item-btn bg-red-500 text-white px-2 sm:px-3 py-1 rounded-md hover:bg-red-600 transition text-sm" data-item='${JSON.stringify(item)}'>追加</button>
                                 </div>
                             </div>
                         `).join('')}
@@ -253,26 +276,12 @@
                 </div>
             `).join('');
 
-            const currentOrderItems = state.currentOrders.map(order => `
-                <div class="flex justify-between items-center p-2 border-b fade-in">
-                    <div>
-                        <p class="text-sm sm:text-base">${order.person} - ${order.item}</p>
-                        <p class="text-xs sm:text-sm text-gray-500">${order.count}本 x ¥${order.price} = ¥${order.totalPrice.toLocaleString()}</p>
-                    </div>
-                    <button class="delete-current-order-btn text-red-500 hover:text-red-700 font-bold text-2xl" data-id="${order.id}">×</button>
-                </div>
-            `).join('');
-            
-            const currentTotal = state.currentOrders.reduce((sum, order) => sum + order.totalPrice, 0);
-
             return `
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Menu Selection -->
                     <div class="lg:col-span-2 custom-scrollbar" style="max-height: 70vh; overflow-y: auto; padding-right: 1rem;">
                         <h2 class="text-xl font-bold mb-4">メニュー</h2>
                         ${menuHtml}
                     </div>
-                    <!-- Current Order -->
                     <div class="space-y-4">
                         <h2 class="text-xl font-bold">現在の注文</h2>
                         <div class="space-y-2">
@@ -281,13 +290,11 @@
                                 ${nameOptions}
                             </select>
                         </div>
-                        <div id="current-order-list" class="bg-gray-100 rounded-lg p-3 space-y-2 min-h-[100px] custom-scrollbar" style="max-height: 40vh; overflow-y: auto;">
-                            ${state.currentOrders.length > 0 ? currentOrderItems : '<p class="text-gray-500 text-center pt-4">注文を追加してください。</p>'}
-                        </div>
+                        <div id="current-order-list" class="bg-gray-100 rounded-lg p-3 space-y-2 min-h-[100px] custom-scrollbar" style="max-height: 40vh; overflow-y: auto;"></div>
                         <div class="text-right font-bold text-lg">
-                            小計: ¥${currentTotal.toLocaleString()}
+                            小計: <span id="current-order-total">¥0</span>
                         </div>
-                        <button id="confirm-order-btn" class="w-full bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600 transition disabled:bg-gray-400" ${state.currentOrders.length === 0 ? 'disabled' : ''}>
+                        <button id="confirm-order-btn" class="w-full bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600 transition" disabled>
                             注文を確定する
                         </button>
                     </div>
@@ -300,7 +307,6 @@
                 return `<p class="text-center text-gray-600">まだ注文履歴がありません。</p>`;
             }
 
-            // 1. Real-time stats
             const allOrders = state.orderHistory.flatMap(h => h.orders);
             const totalAmount = allOrders.reduce((sum, order) => sum + order.totalPrice, 0);
             const totalItems = allOrders.reduce((sum, order) => sum + order.count, 0);
@@ -309,309 +315,161 @@
 
             const statsHtml = `
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 text-center">
-                    <div class="bg-blue-100 p-2 sm:p-4 rounded-lg">
-                        <p class="text-xs sm:text-sm text-blue-800">総注文数</p>
-                        <p class="text-lg sm:text-2xl font-bold text-blue-900">${totalItems.toLocaleString()}本</p>
-                    </div>
-                    <div class="bg-green-100 p-2 sm:p-4 rounded-lg">
-                        <p class="text-xs sm:text-sm text-green-800">合計金額</p>
-                        <p class="text-lg sm:text-2xl font-bold text-green-900">¥${totalAmount.toLocaleString()}</p>
-                    </div>
-                    <div class="bg-yellow-100 p-2 sm:p-4 rounded-lg">
-                        <p class="text-xs sm:text-sm text-yellow-800">参加人数</p>
-                        <p class="text-lg sm:text-2xl font-bold text-yellow-900">${participantCount}人</p>
-                    </div>
-                    <div class="bg-purple-100 p-2 sm:p-4 rounded-lg">
-                        <p class="text-xs sm:text-sm text-purple-800">平均/人</p>
-                        <p class="text-lg sm:text-2xl font-bold text-purple-900">¥${Math.round(averagePerPerson).toLocaleString()}</p>
-                    </div>
-                </div>
-            `;
+                    <div class="bg-blue-100 p-2 sm:p-4 rounded-lg"><p class="text-xs sm:text-sm text-blue-800">総注文数</p><p class="text-lg sm:text-2xl font-bold text-blue-900">${totalItems.toLocaleString()}本</p></div>
+                    <div class="bg-green-100 p-2 sm:p-4 rounded-lg"><p class="text-xs sm:text-sm text-green-800">合計金額</p><p class="text-lg sm:text-2xl font-bold text-green-900">¥${totalAmount.toLocaleString()}</p></div>
+                    <div class="bg-yellow-100 p-2 sm:p-4 rounded-lg"><p class="text-xs sm:text-sm text-yellow-800">参加人数</p><p class="text-lg sm:text-2xl font-bold text-yellow-900">${participantCount}人</p></div>
+                    <div class="bg-purple-100 p-2 sm:p-4 rounded-lg"><p class="text-xs sm:text-sm text-purple-800">平均/人</p><p class="text-lg sm:text-2xl font-bold text-purple-900">¥${Math.round(averagePerPerson).toLocaleString()}</p></div>
+                </div>`;
 
-            // 2. Order for staff, grouped by session
             const staffOrdersBySessionHtml = [...state.orderHistory].reverse().map(historyEntry => {
                 const staffOrderForSession = historyEntry.orders.reduce((acc, order) => {
                     acc[order.item] = (acc[order.item] || 0) + order.count;
                     return acc;
                 }, {});
-
-                const sessionOrderHtml = Object.entries(staffOrderForSession).map(([item, count]) => `
-                    <div class="flex justify-between p-2 bg-gray-50 rounded-md text-sm">
-                        <span>${item}</span>
-                        <span class="font-semibold">${count}本</span>
-                    </div>
-                `).join('');
-
-                return `
-                    <div class="bg-gray-100 p-3 sm:p-4 rounded-lg">
-                        <h4 class="font-semibold mb-2 text-gray-700 text-sm sm:text-base">注文日時: ${historyEntry.timestamp} (合計: ¥${historyEntry.totalPrice.toLocaleString()})</h4>
-                        <div class="space-y-2">
-                            ${sessionOrderHtml}
-                        </div>
-                    </div>
-                `;
+                const sessionOrderHtml = Object.entries(staffOrderForSession).map(([item, count]) => `<div class="flex justify-between p-2 bg-gray-50 rounded-md text-sm"><span>${item}</span><span class="font-semibold">${count}本</span></div>`).join('');
+                return `<div class="bg-gray-100 p-3 sm:p-4 rounded-lg"><h4 class="font-semibold mb-2 text-gray-700 text-sm sm:text-base">注文日時: ${historyEntry.timestamp} (合計: ¥${historyEntry.totalPrice.toLocaleString()})</h4><div class="space-y-2">${sessionOrderHtml}</div></div>`;
             }).join('');
 
-            // 3. Individual history
             const individualHistory = state.registeredNames.map(name => {
                 const personOrders = allOrders.filter(o => o.person === name);
                 const personTotal = personOrders.reduce((sum, o) => sum + o.totalPrice, 0);
                 if (personOrders.length === 0) return '';
-                
                 const ordersByItem = personOrders.reduce((acc, order) => {
-                    if (!acc[order.item]) {
-                        acc[order.item] = { count: 0, price: order.price, totalPrice: 0 };
-                    }
+                    if (!acc[order.item]) acc[order.item] = { count: 0, price: order.price, totalPrice: 0 };
                     acc[order.item].count += order.count;
                     acc[order.item].totalPrice += order.totalPrice;
                     return acc;
                 }, {});
-
-                return `
-                    <div class="bg-gray-100 p-3 sm:p-4 rounded-lg">
-                        <div class="flex justify-between items-baseline">
-                            <h4 class="text-base sm:text-lg font-semibold">${name}</h4>
-                            <span class="font-bold text-red-500">合計: ¥${personTotal.toLocaleString()}</span>
-                        </div>
-                        <div class="mt-2 space-y-1 text-xs sm:text-sm">
-                            ${Object.entries(ordersByItem).map(([item, data]) => `
-                                <div class="flex justify-between">
-                                    <span>${item}</span>
-                                    <span>${data.count}本 - ¥${data.totalPrice.toLocaleString()}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
+                return `<div class="bg-gray-100 p-3 sm:p-4 rounded-lg"><div class="flex justify-between items-baseline"><h4 class="text-base sm:text-lg font-semibold">${name}</h4><span class="font-bold text-red-500">合計: ¥${personTotal.toLocaleString()}</span></div><div class="mt-2 space-y-1 text-xs sm:text-sm">${Object.entries(ordersByItem).map(([item, data]) => `<div class="flex justify-between"><span>${item}</span><span>${data.count}本 - ¥${data.totalPrice.toLocaleString()}</span></div>`).join('')}</div></div>`;
             }).join('');
 
-            // 4. Kushi Ranking
-            const staffOrder = allOrders.reduce((acc, order) => {
-                acc[order.item] = (acc[order.item] || 0) + order.count;
-                return acc;
-            }, {});
-            const ranking = Object.entries(staffOrder)
-                .sort(([, countA], [, countB]) => countB - countA)
-                .slice(0, 3);
-            const rankingHtml = ranking.map(([item, count], index) => {
-                const medal = ['🥇', '🥈', '🥉'][index];
-                return `
-                    <div class="flex items-center space-x-2 sm:space-x-4 bg-yellow-50 p-3 rounded-lg">
-                        <span class="text-2xl sm:text-3xl">${medal}</span>
-                        <div>
-                            <p class="font-bold text-sm sm:text-base">${item}</p>
-                            <p class="text-xs sm:text-sm text-gray-600">${count}本</p>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            const staffOrder = allOrders.reduce((acc, order) => { acc[order.item] = (acc[order.item] || 0) + order.count; return acc; }, {});
+            const ranking = Object.entries(staffOrder).sort(([, countA], [, countB]) => countB - countA).slice(0, 3);
+            const rankingHtml = ranking.map(([item, count], index) => `<div class="flex items-center space-x-2 sm:space-x-4 bg-yellow-50 p-3 rounded-lg"><span class="text-2xl sm:text-3xl">${['🥇', '🥈', '🥉'][index]}</span><div><p class="font-bold text-sm sm:text-base">${item}</p><p class="text-xs sm:text-sm text-gray-600">${count}本</p></div></div>`).join('');
 
-            return `
-                <div class="space-y-8">
-                    <div>
-                        <h2 class="text-xl font-bold mb-4">サマリー</h2>
-                        ${statsHtml}
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold mb-4">🏆 串ランキング TOP 3</h2>
-                        <div class="space-y-2">
-                            ${ranking.length > 0 ? rankingHtml : '<p class="text-gray-500">まだ注文がありません。</p>'}
-                        </div>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold mb-4">👨‍🍳 店員さんへの注文内容 (注文回ごと)</h2>
-                        <div class="space-y-4 custom-scrollbar" style="max-height: 400px; overflow-y: auto; padding: 4px;">
-                            ${staffOrdersBySessionHtml || '<p class="text-gray-500">まだ注文がありません。</p>'}
-                        </div>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold mb-4">👤 個人別注文履歴 (総合計)</h2>
-                        <div class="space-y-4">
-                            ${individualHistory || '<p class="text-gray-500">まだ注文がありません。</p>'}
-                        </div>
-                    </div>
-                </div>
-            `;
+            return `<div class="space-y-8"><div><h2 class="text-xl font-bold mb-4">サマリー</h2>${statsHtml}</div><div><h2 class="text-xl font-bold mb-4">🏆 串ランキング TOP 3</h2><div class="space-y-2">${ranking.length > 0 ? rankingHtml : '<p class="text-gray-500">まだ注文がありません。</p>'}</div></div><div><h2 class="text-xl font-bold mb-4">👨‍🍳 店員さんへの注文内容 (注文回ごと)</h2><div class="space-y-4 custom-scrollbar" style="max-height: 400px; overflow-y: auto; padding: 4px;">${staffOrdersBySessionHtml || '<p class="text-gray-500">まだ注文がありません。</p>'}</div></div><div><h2 class="text-xl font-bold mb-4">👤 個人別注文履歴 (総合計)</h2><div class="space-y-4">${individualHistory || '<p class="text-gray-500">まだ注文がありません。</p>'}</div></div></div>`;
         }
 
         function renderResetTab() {
-            return `
-                <div class="text-center space-y-4 p-4 sm:p-8">
-                    <h2 class="text-xl font-bold text-red-700">データリセット</h2>
-                    <p class="text-gray-600">この操作は元に戻せません。<br>全ての参加者名と注文履歴が削除されます。</p>
-                    <button id="reset-all-data-btn" class="bg-red-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-red-700 transition">全てのデータをリセットする</button>
-                </div>
-            `;
+            return `<div class="text-center space-y-4 p-4 sm:p-8"><h2 class="text-xl font-bold text-red-700">データリセット</h2><p class="text-gray-600">この操作は元に戻せません。<br>全ての参加者名と注文履歴が削除されます。</p><button id="reset-all-data-btn" class="bg-red-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-red-700 transition">全てのデータをリセットする</button></div>`;
         }
 
         // --- EVENT LISTENERS & LOGIC ---
 
         function attachEventListeners() {
-            // Names Tab
             const addNameBtn = document.getElementById('add-name-btn');
             if (addNameBtn) addNameBtn.addEventListener('click', handleAddName);
             
             const newNameInput = document.getElementById('new-name-input');
-            if (newNameInput) newNameInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') handleAddName();
+            if (newNameInput) newNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddName();
+                }
             });
 
-            document.querySelectorAll('.delete-name-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => handleDeleteName(e.target.dataset.name));
-            });
-
-            // Order Tab
-            document.querySelectorAll('.add-item-btn').forEach(btn => {
-                btn.addEventListener('click', handleAddItem);
-            });
-            document.querySelectorAll('.delete-current-order-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => handleDeleteCurrentOrder(e.currentTarget.dataset.id));
-            });
+            document.querySelectorAll('.delete-name-btn').forEach(btn => btn.addEventListener('click', (e) => handleDeleteName(e.target.dataset.name)));
+            document.querySelectorAll('.add-item-btn').forEach(btn => btn.addEventListener('click', handleAddItem));
+            
             const confirmOrderBtn = document.getElementById('confirm-order-btn');
             if (confirmOrderBtn) confirmOrderBtn.addEventListener('click', handleConfirmOrder);
             
-            // ADDED: Listener for person selection change
             const personSelect = document.getElementById('order-person-select');
             if(personSelect) personSelect.addEventListener('change', handleSelectPerson);
 
-
-            // Reset Tab
             const resetAllDataBtn = document.getElementById('reset-all-data-btn');
             if (resetAllDataBtn) resetAllDataBtn.addEventListener('click', handleResetAllData);
+
+            if (state.currentTab === 'order' && state.registeredNames.length > 0) {
+                renderCurrentOrderList();
+            }
         }
 
         function handleAddName() {
             const input = document.getElementById('new-name-input');
             const name = input.value.trim();
-            if (!name) {
-                showAlert('名前を入力してください。');
-                return;
-            }
-            if (state.registeredNames.includes(name)) {
-                showAlert('その名前は既に登録されています。');
-                return;
-            }
+            if (!name) { showAlert('名前を入力してください。'); return; }
+            if (state.registeredNames.includes(name)) { showAlert('その名前は既に登録されています。'); return; }
+            
+            input.value = '';
             state.registeredNames.push(name);
-            // If this is the first person added, select them by default
-            if(state.registeredNames.length === 1) {
-                state.selectedPerson = name;
-            }
+            if(state.registeredNames.length === 1) state.selectedPerson = name;
             saveData();
             render();
         }
 
         function handleDeleteName(name) {
-            showModal(
-                '名前の削除',
-                `「${name}」さんを削除しますか？<br>この人の注文履歴も全て削除されます。`,
-                () => {
-                    state.registeredNames = state.registeredNames.filter(n => n !== name);
-                    // If the deleted name was the selected one, update selection
-                    if (state.selectedPerson === name) {
-                        state.selectedPerson = state.registeredNames.length > 0 ? state.registeredNames[0] : null;
-                    }
-                    // Also remove from order history
-                    state.orderHistory.forEach(h => {
-                        h.orders = h.orders.filter(o => o.person !== name);
-                    });
-                    state.orderHistory = state.orderHistory.filter(h => h.orders.length > 0);
-                    saveData();
-                    render();
-                }
-            );
+            showModal('名前の削除', `「${name}」さんを削除しますか？<br>この人の注文履歴も全て削除されます。`, () => {
+                state.registeredNames = state.registeredNames.filter(n => n !== name);
+                state.currentOrders = state.currentOrders.filter(o => o.person !== name);
+                if (state.selectedPerson === name) state.selectedPerson = state.registeredNames.length > 0 ? state.registeredNames[0] : null;
+                state.orderHistory.forEach(h => h.orders = h.orders.filter(o => o.person !== name));
+                state.orderHistory = state.orderHistory.filter(h => h.orders.length > 0);
+                saveData();
+                render();
+            });
         }
         
         function handleAddItem(event) {
             const button = event.currentTarget;
             const item = JSON.parse(button.dataset.item);
-            const person = state.selectedPerson; // Use selected person from state
+            const person = state.selectedPerson;
 
-            if (!person) {
-                showAlert('注文者を選択してください。');
-                return;
-            }
+            if (!person) { showAlert('注文者を選択してください。'); return; }
 
             const input = button.parentElement.querySelector('.add-quantity-input');
             let count = parseInt(input.value, 10);
-            
-            if (isNaN(count) || count <= 0) {
-                count = 1;
-            }
-            if (count > 20) {
-                count = 20;
-            }
+            if (isNaN(count) || count <= 0) count = 1;
+            if (count > 20) count = 20;
 
             const existingOrderIndex = state.currentOrders.findIndex(o => o.person === person && o.item === item.name);
-
             if (existingOrderIndex > -1) {
                 state.currentOrders[existingOrderIndex].count += count;
                 state.currentOrders[existingOrderIndex].totalPrice = state.currentOrders[existingOrderIndex].price * state.currentOrders[existingOrderIndex].count;
             } else {
-                state.currentOrders.push({
-                    id: `${person}-${item.name}-${Date.now()}`,
-                    person: person,
-                    item: item.name,
-                    price: item.price,
-                    count: count,
-                    totalPrice: item.price * count,
-                });
+                state.currentOrders.push({ id: `${person}-${item.name}-${Date.now()}`, person, item: item.name, price: item.price, count, totalPrice: item.price * count });
             }
 
             input.value = '';
-            render();
+            renderCurrentOrderList();
         }
         
         function handleDeleteCurrentOrder(id) {
             state.currentOrders = state.currentOrders.filter(o => o.id !== id);
-            render();
+            renderCurrentOrderList();
         }
 
-        // ADDED: Handles person selection change
         function handleSelectPerson(event) {
             state.selectedPerson = event.target.value;
-            saveData(); // Save the new selection
+            saveData();
         }
 
         function handleConfirmOrder() {
-            if (state.currentOrders.length === 0) {
-                showAlert('注文がありません。');
-        return;
-      }
-
-            showModal(
-                '注文の確定',
-                '現在の注文を履歴に追加しますか？',
-                () => {
-                    const newHistoryEntry = {
-                        id: Date.now(),
-                        timestamp: new Date().toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
-                        orders: JSON.parse(JSON.stringify(state.currentOrders)),
-                        totalPrice: state.currentOrders.reduce((sum, order) => sum + order.totalPrice, 0)
-                    };
-                    state.orderHistory.push(newHistoryEntry);
-                    state.currentOrders = [];
-                    saveData();
-                    showTab('history');
-                }
-            );
+            if (state.currentOrders.length === 0) { showAlert('注文がありません。'); return; }
+            showModal('注文の確定', '現在の注文を履歴に追加しますか？', () => {
+                const newHistoryEntry = {
+                    id: Date.now(),
+                    timestamp: new Date().toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                    orders: JSON.parse(JSON.stringify(state.currentOrders)),
+                    totalPrice: state.currentOrders.reduce((sum, order) => sum + order.totalPrice, 0)
+                };
+                state.orderHistory.push(newHistoryEntry);
+                state.currentOrders = [];
+                saveData();
+                showTab('history');
+            });
         }
 
         function handleResetAllData() {
-            showModal(
-                '全データのリセット',
-                '本当に全てのデータをリセットしますか？この操作は取り消せません。',
-                () => {
-                    state.registeredNames = [];
-                    state.orderHistory = [];
-                    state.currentOrders = [];
-                    state.selectedPerson = null;
-                    saveData();
-                    render();
-                }
-            );
+            showModal('全データのリセット', '本当に全てのデータをリセットしますか？この操作は取り消せません。', () => {
+                state.registeredNames = [];
+                state.orderHistory = [];
+                state.currentOrders = [];
+                state.selectedPerson = null;
+                saveData();
+                render();
+            });
         }
-
-        // --- UTILITY FUNCTIONS ---
 
         function showTab(tabName) {
             state.currentTab = tabName;
@@ -622,11 +480,9 @@
         function showAlert(message) {
             const alertBox = document.getElementById('custom-alert');
             const alertMessage = document.getElementById('alert-message');
-            
             alertMessage.textContent = message;
             alertBox.classList.remove('hidden', 'translate-x-full');
             alertBox.classList.add('translate-x-0');
-
             clearTimeout(alertTimeout);
             alertTimeout = setTimeout(() => {
                 alertBox.classList.remove('translate-x-0');
@@ -639,27 +495,16 @@
             const modal = document.getElementById('custom-modal');
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-message').innerHTML = message;
-            
             const confirmBtn = document.getElementById('modal-confirm');
             const cancelBtn = document.getElementById('modal-cancel');
-
-            const confirmHandler = () => {
-                onConfirm();
-                hideModal();
-            };
-            
-            const cancelHandler = () => {
-                hideModal();
-            };
-            
+            const confirmHandler = () => { onConfirm(); hideModal(); };
+            const cancelHandler = () => hideModal();
             const newConfirmBtn = confirmBtn.cloneNode(true);
             confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
             newConfirmBtn.addEventListener('click', confirmHandler);
-
             const newCancelBtn = cancelBtn.cloneNode(true);
             cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
             newCancelBtn.addEventListener('click', cancelHandler);
-
             modal.classList.remove('hidden');
         }
 
@@ -667,13 +512,11 @@
             document.getElementById('custom-modal').classList.add('hidden');
         }
 
-        // --- INITIALIZATION ---
-
         window.onload = () => {
             loadData();
             showTab('names');
         };
 
-  </script>
+    </script>
 </body>
 </html>
