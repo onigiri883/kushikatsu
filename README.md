@@ -1,4 +1,4 @@
-# kushikatsu-tanaka
+# kushikatsu
 複数人での串カツ注文を効率的に管理するWebアプリケーションです。
 
 ## 機能
